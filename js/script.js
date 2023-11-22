@@ -1,196 +1,214 @@
-const wordText = document.querySelector(".word"),
-  hintText = document.querySelector(".hint span"),
-  timeText = document.querySelector(".time b"),
-  inputField = document.querySelector("input"),
-  refreshBtn = document.querySelector(".refresh-word"),
-  checkBtn = document.querySelector(".check-word"),
-  messageElement = document.getElementById("message"),
-  scoreText = document.querySelector(".score b"),
-  wordClassElement = document.querySelector(".word-class");
-
-let score = 0;
-let streak = 0;
-let correctWord, timer;
-const scoreWords = [
-  "Amazing", "Wonderful", "Wordlicious", "Incredible", "Fantastic",
-  "Superb", "Outstanding", "Excellent", "Impressive", "Spectacular"
-];
-
-// Initialize game with dynamic timer based on word difficulty
-const initTimer = () => {
-  clearInterval(timer);
-  const timeMap = { common: 20, rare: 25, exclusive: 30, legendary: 35 };
-  const wordClass = wordClassElement.innerText.toLowerCase();
-  let maxTime = timeMap[wordClass] || 30;
-
-  timer = setInterval(() => {
-    if (maxTime > 0) {
-      maxTime--;
-      timeText.innerText = maxTime;
-    } else {
-      clearInterval(timer);
-      messageElement.innerHTML = `Time off! <span style="color: #39A7FF;">${correctWord.toUpperCase()}</span> was correct`;
-      inputField.style.display = "none";
-      setTimeout(() => {
-        initGame();
-        inputField.style.display = "block";
-      }, 1500);
-    }
-  }, 1000);
+const elements = {
+	word: document.getElementById("scrambledWord"),
+	hint: document.getElementById("hintText"),
+	time: document.getElementById("timeValue"),
+	timerBar: document.getElementById("timerBar"),
+	input: document.getElementById("answerInput"),
+	form: document.getElementById("answerForm"),
+	message: document.getElementById("message"),
+	difficulty: document.getElementById("difficulty"),
+	letters: document.getElementById("letterCount"),
+	round: document.getElementById("roundNumber"),
+	streakLabel: document.getElementById("streakLabel"),
+	score: document.getElementById("scoreValue"),
+	scoreChange: document.getElementById("scoreChange"),
+	solved: document.getElementById("solvedValue"),
+	accuracy: document.getElementById("accuracyValue"),
+	bestStreak: document.getElementById("bestStreakValue"),
+	focus: document.getElementById("focusValue"),
+	focusBar: document.getElementById("focusBar"),
+	bestScore: document.getElementById("bestScoreLabel"),
+	hintButton: document.getElementById("hintButton"),
+	hintCost: document.getElementById("hintCost"),
 };
-
-// Classify words by difficulty (predefined in words.js or auto-generated)
-const getWordClass = (wordObj) => {
-  if (wordObj.difficulty) return wordObj.difficulty; // Use predefined if available
-
-  const word = wordObj.word.toLowerCase();
-  const wordLength = word.length;
-  const repeatingChars = /([a-zA-Z]).*?\1/.test(word);
-
-  if (wordLength <= 4 || repeatingChars) return "common";
-  else if (wordLength <= 6) return "rare";
-  else if (wordLength <= 8) return "exclusive";
-  else return "legendary";
+const saved = JSON.parse(localStorage.getItem("lexisprint-progress") || "null");
+const state = {
+	score: 0,
+	streak: 0,
+	bestStreak: saved?.bestStreak || 0,
+	solved: 0,
+	attempts: 0,
+	round: 0,
+	focus: 0,
+	mode: "classic",
+	time: 30,
+	maxTime: 30,
+	word: null,
+	timer: null,
+	hintUsed: false,
+	bestScore: saved?.bestScore || 0,
+	sound: false,
 };
-
-// Set visual style for word class
-const setWordClassStyle = (wordClass) => {
-  const colors = {
-    common: { color: "black", bg: "lightblue" },
-    rare: { color: "white", bg: "red" },
-    exclusive: { color: "black", bg: "gold" },
-    legendary: { color: "white", bg: "purple" }
-  };
-  wordClassElement.style.color = colors[wordClass].color;
-  wordClassElement.style.backgroundColor = colors[wordClass].bg;
+const getWordClass = (wordObj) =>
+	wordObj.difficulty ||
+	(wordObj.word.length > 8
+		? "legendary"
+		: wordObj.word.length > 6
+			? "exclusive"
+			: wordObj.word.length > 4
+				? "rare"
+				: "common");
+const shuffle = (value) => {
+	const letters = value.split("");
+	for (let index = letters.length - 1; index > 0; index -= 1) {
+		const randomIndex = Math.floor(Math.random() * (index + 1));
+		[letters[index], letters[randomIndex]] = [
+			letters[randomIndex],
+			letters[index],
+		];
+	}
+	return letters.join("");
 };
-
-// Initialize game
-const initGame = () => {
-  const randomObj = words[Math.floor(Math.random() * words.length)];
-  const wordArray = randomObj.word.split("");
-
-  // Shuffle word
-  for (let i = wordArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [wordArray[i], wordArray[j]] = [wordArray[j], wordArray[i]];
-  }
-
-  wordText.innerText = wordArray.join("");
-  hintText.innerText = randomObj.hint;
-  correctWord = randomObj.word.toLowerCase();
-  inputField.value = "";
-  inputField.setAttribute("maxlength", correctWord.length);
-  inputField.className = "";
-  inputField.focus();
-
-  // Set word class and style
-  const wordClass = getWordClass(randomObj);
-  wordClassElement.innerText = wordClass;
-  setWordClassStyle(wordClass);
-
-  messageElement.textContent = "";
-  initTimer();
+const saveProgress = () =>
+	localStorage.setItem(
+		"lexisprint-progress",
+		JSON.stringify({
+			bestScore: state.bestScore,
+			bestStreak: state.bestStreak,
+		}),
+	);
+const updateStats = () => {
+	elements.score.textContent = state.score;
+	elements.solved.textContent = state.solved;
+	elements.accuracy.textContent = `${state.attempts ? Math.round((state.solved / state.attempts) * 100) : 0}%`;
+	elements.bestStreak.textContent = state.bestStreak;
+	elements.focus.textContent = `${state.focus}%`;
+	elements.focusBar.style.width = `${state.focus}%`;
+	elements.bestScore.textContent = `BEST SCORE ${state.bestScore}`;
 };
-
-// Update score with animations and streak bonuses
-const updateScore = (timeLeft) => {
-  const baseScore = 10;
-  let bonus = 0;
-
-  // Time bonus
-  if (timeLeft > 25) bonus += 10;
-  else if (timeLeft > 20) bonus += 7;
-  else if (timeLeft > 15) bonus += 5;
-
-  // Streak bonus
-  streak++;
-  if (streak >= 3) bonus += 5;
-
-  // Word class bonus
-  const wordClass = wordClassElement.innerText.toLowerCase();
-  if (wordClass === "legendary") bonus += 15;
-  else if (wordClass === "exclusive") bonus += 10;
-
-  score += baseScore + bonus;
-  scoreText.innerText = score;
-
-  // Flash score update
-  scoreText.classList.add("score-update");
-  setTimeout(() => scoreText.classList.remove("score-update"), 500);
+const setMessage = (text, error = false) => {
+	elements.message.textContent = text;
+	elements.message.classList.toggle("error", error);
 };
-
-// Show celebratory word on score update
-const showScoreWord = () => {
-  const labelElement = document.getElementById("scoreLabel");
-  const scoreValueElement = document.getElementById("scoreValue");
-  const displayWord = scoreWords[Math.floor(Math.random() * scoreWords.length)];
-
-  scoreValueElement.innerHTML = `<span class="celebrate-word">${displayWord}</span>`;
-  labelElement.style.display = "none";
-
-  setTimeout(() => {
-    scoreValueElement.innerHTML = score;
-    labelElement.style.display = "inline";
-  }, 1100);
+const stopTimer = () => clearInterval(state.timer);
+const startTimer = () => {
+	stopTimer();
+	state.timer = setInterval(() => {
+		state.time -= 1;
+		elements.time.textContent = state.time;
+		elements.timerBar.style.width = `${(state.time / state.maxTime) * 100}%`;
+		if (state.time <= 0) {
+			stopTimer();
+			state.attempts += 1;
+			setMessage(
+				`Time's up. The word was ${state.word.word.toUpperCase()}.`,
+				true,
+			);
+			elements.input.disabled = true;
+			setTimeout(newRound, 1300);
+		}
+	}, 1000);
 };
-
-// Check user's word
-window.checkWord = () => {
-  const userWord = inputField.value.toLowerCase().trim();
-
-  if (!userWord) {
-    messageElement.textContent = "Please enter a word!";
-    inputField.classList.add("flash");
-    setTimeout(() => {
-      inputField.classList.remove("flash");
-      messageElement.textContent = "";
-    }, 2000);
-    return;
-  }
-
-  if (userWord !== correctWord) {
-    streak = 0;
-    inputField.classList.add("incorrect");
-    wordText.classList.add("shake");
-    messageElement.textContent = "Oops! Try again.";
-    setTimeout(() => {
-      inputField.classList.remove("incorrect");
-      wordText.classList.remove("shake");
-    }, 500);
-    return;
-  }
-
-  // Correct answer
-  const timeLeft = parseInt(timeText.innerText);
-  clearInterval(timer);
-  inputField.classList.add("correct");
-  messageElement.innerHTML = `🎉 <span style="color: #39A7FF;">${correctWord.toUpperCase()}</span> is correct!`;
-
-  updateScore(timeLeft);
-  showScoreWord();
-
-  setTimeout(() => {
-    initGame();
-    inputField.classList.remove("correct");
-  }, 2000);
+const newRound = () => {
+	stopTimer();
+	state.round += 1;
+	state.hintUsed = false;
+	state.word = words[Math.floor(Math.random() * words.length)];
+	const wordClass = getWordClass(state.word);
+	state.maxTime =
+		state.mode === "blitz"
+			? 15
+			: { common: 30, rare: 28, exclusive: 25, legendary: 22 }[wordClass] || 30;
+	state.time = state.maxTime;
+	elements.word.textContent = shuffle(state.word.word);
+	elements.difficulty.textContent = wordClass.toUpperCase();
+	elements.letters.textContent = `${state.word.word.length} LETTERS`;
+	elements.round.textContent = String(state.round).padStart(2, "0");
+	elements.streakLabel.textContent = state.streak
+		? `${state.streak} IN A ROW`
+		: "BUILD YOUR STREAK";
+	elements.time.textContent = state.time;
+	elements.timerBar.style.width = "100%";
+	elements.input.value = "";
+	elements.input.disabled = false;
+	elements.input.maxLength = state.word.word.length;
+	elements.input.className = "";
+	elements.hint.textContent = "A clue will appear here.";
+	elements.hintButton.disabled = false;
+	elements.hintCost.textContent = state.score >= 3 ? "−3" : "free";
+	setMessage("");
+	startTimer();
+	elements.input.focus();
 };
-
-// Event listeners
-refreshBtn.addEventListener("click", initGame);
-checkBtn.addEventListener("click", checkWord);
-inputField.addEventListener("keyup", (e) => {
-  if (e.key === "Enter") checkWord();
+const checkAnswer = () => {
+	const answer = elements.input.value.trim().toLowerCase();
+	if (!answer) {
+		setMessage("Type an answer first.", true);
+		elements.input.classList.add("shake");
+		setTimeout(() => elements.input.classList.remove("shake"), 400);
+		return;
+	}
+	state.attempts += 1;
+	if (answer !== state.word.word.toLowerCase()) {
+		state.streak = 0;
+		state.focus = Math.max(0, state.focus - 8);
+		elements.input.classList.add("incorrect");
+		setMessage("Not quite. Keep looking at the clue.", true);
+		updateStats();
+		setTimeout(() => elements.input.classList.remove("incorrect"), 500);
+		return;
+	}
+	stopTimer();
+	state.solved += 1;
+	state.streak += 1;
+	state.bestStreak = Math.max(state.bestStreak, state.streak);
+	const difficultyBonus = { common: 0, rare: 4, exclusive: 8, legendary: 12 }[
+		getWordClass(state.word)
+	];
+	const points = Math.max(
+		5,
+		10 +
+			Math.ceil(state.time / 3) +
+			difficultyBonus +
+			(state.streak >= 3 ? 5 : 0) -
+			(state.hintUsed ? 3 : 0),
+	);
+	state.score += points;
+	state.bestScore = Math.max(state.bestScore, state.score);
+	state.focus = Math.min(100, state.focus + 12);
+	elements.input.classList.add("correct");
+	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak`;
+	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
+	saveProgress();
+	updateStats();
+	setTimeout(newRound, 1100);
+};
+elements.form.addEventListener("submit", (event) => {
+	event.preventDefault();
+	checkAnswer();
 });
-
-// Live input validation (optional)
-inputField.addEventListener("input", () => {
-  const userWord = inputField.value.toLowerCase();
-  inputField.classList.remove("partial-correct");
-  if (correctWord.startsWith(userWord) && userWord.length > 0) {
-    inputField.classList.add("partial-correct");
-  }
+document.getElementById("skipButton").addEventListener("click", () => {
+	state.streak = 0;
+	setMessage(`Skipped. The word was ${state.word.word.toUpperCase()}.`, true);
+	elements.input.disabled = true;
+	stopTimer();
+	setTimeout(newRound, 700);
 });
-
-// Initialize first game
-initGame();
+elements.hintButton.addEventListener("click", () => {
+	if (state.hintUsed) return;
+	state.hintUsed = true;
+	state.score = Math.max(0, state.score - 3);
+	elements.hint.textContent = state.word.hint;
+	elements.hintButton.disabled = true;
+	elements.hintCost.textContent = "used";
+	updateStats();
+});
+document.querySelectorAll(".mode-button").forEach((button) =>
+	button.addEventListener("click", () => {
+		document
+			.querySelectorAll(".mode-button")
+			.forEach((item) => item.classList.remove("active"));
+		button.classList.add("active");
+		state.mode = button.dataset.mode;
+		newRound();
+	}),
+);
+document
+	.getElementById("themeToggle")
+	.addEventListener("click", () => document.body.classList.toggle("warm-mode"));
+document.getElementById("soundToggle").addEventListener("click", (event) => {
+	state.sound = !state.sound;
+	event.currentTarget.textContent = state.sound ? "♫" : "⌁";
+});
+updateStats();
+newRound();

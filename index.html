@@ -1,57 +1,185 @@
 <!doctype html>
-<html lang="en" dir="ltr">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" href="img/image.png" type="image/x-icon" />
-		<title>Word Scramble Game</title>
-		<link rel="stylesheet" href="style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="description"
+			content="A focused word scramble game for quick thinking and vocabulary practice."
+		/>
+		<link rel="icon" href="img/image.png" type="image/x-icon" />
+		<link rel="stylesheet" href="style.css" />
+		<title>LexiSprint | Word scramble</title>
 		<script src="js/words.js" defer></script>
 		<script src="js/script.js" defer></script>
 	</head>
 	<body>
-		<div class="container">
-			<div class="title-container">
-				<img src="img/image.jpeg" class="round-img" />
-				<h2>Word Scramble</h2>
-				<a href="https://github.com/kunaldasx" target="_blank">
-					<p>Follow me</p>
-				</a>
-			</div>
-
-			<div class="content">
-				<div class="score">
-					<p><span id="scoreLabel">Score: </span><b id="scoreValue">0</b></p>
+		<main class="app-shell">
+			<aside class="player-rail">
+				<a class="brand" href="index.html" aria-label="LexiSprint home"
+					><span class="brand-mark">L<span>x</span></span
+					><span><strong>Lexi</strong>Sprint</span></a
+				>
+				<div class="profile-block">
+					<div class="avatar">K</div>
+					<div>
+						<p class="eyebrow">PLAYER ONE</p>
+						<h2>Word explorer</h2>
+					</div>
 				</div>
-				<p class="word"></p>
-				<p class="word-class-p">
-					<span class="word-class"></span>
-				</p>
-				<div class="details">
-					<p class="hint">Hint: <span></span></p>
-					<p class="time">
-						Time Left: <span><b>30</b>s</span>
+				<nav class="rail-nav" aria-label="Game sections">
+					<a class="active" href="#game"
+						><span class="nav-icon">⌁</span>Play round</a
+					><a href="#progress"><span class="nav-icon">↗</span>My progress</a>
+				</nav>
+				<div class="rail-tip">
+					<span class="tip-icon">✦</span>
+					<p>
+						<strong>Small wins add up.</strong><br />Keep your streak alive for
+						bonus points.
 					</p>
 				</div>
-				<input
-					type="text"
-					spellcheck="false"
-					placeholder="Enter a valid word"
-					autocomplete="off"
-					onPaste="return false;"
-					onkeydown="
-						if (event.key === 'Enter') {
-							event.preventDefault();
-							window.checkWord();
-						}
-					"
-				/>
-				<p id="message"></p>
-				<div class="buttons">
-					<button class="refresh-word">Refresh Word</button>
-					<button class="check-word">Check Word</button>
+				<a
+					class="creator-link"
+					href="https://github.com/kunaldasx"
+					target="_blank"
+					rel="noreferrer"
+					>Built by Kunal <span>↗</span></a
+				>
+			</aside>
+			<section class="workspace" id="game">
+				<header class="topbar">
+					<div>
+						<p class="eyebrow accent">VOCABULARY / DAILY PRACTICE</p>
+						<h1>Make a word of it.</h1>
+					</div>
+					<div class="topbar-actions">
+						<button
+							class="icon-button"
+							id="soundToggle"
+							type="button"
+							aria-label="Toggle sound"
+							title="Toggle sound"
+						>
+							⌁</button
+						><button
+							class="icon-button"
+							id="themeToggle"
+							type="button"
+							aria-label="Toggle theme"
+							title="Toggle theme"
+						>
+							◐
+						</button>
+						<div class="date-chip">
+							<span class="live-dot"></span><span id="todayLabel">TODAY</span>
+						</div>
+					</div>
+				</header>
+				<div class="mode-switcher" role="group" aria-label="Game mode">
+					<button class="mode-button active" data-mode="classic" type="button">
+						<span>Classic</span><small>30 sec · balanced</small></button
+					><button class="mode-button" data-mode="blitz" type="button">
+						<span>Blitz</span><small>15 sec · high energy</small>
+					</button>
 				</div>
-			</div>
-		</div>
+				<div class="dashboard-grid">
+					<section class="game-card" aria-live="polite">
+						<div class="card-header">
+							<div>
+								<p class="eyebrow">ROUND <span id="roundNumber">01</span></p>
+								<p class="round-copy">
+									Untangle the letters before the clock runs out.
+								</p>
+							</div>
+							<div class="difficulty-pill" id="difficulty">COMMON</div>
+						</div>
+						<div class="timer-wrap">
+							<div class="timer-label">
+								<span>TIME REMAINING</span
+								><strong><span id="timeValue">30</span>s</strong>
+							</div>
+							<div class="timer-track"><span id="timerBar"></span></div>
+						</div>
+						<div class="scramble-zone">
+							<p class="scramble-label">THE SCRAMBLE</p>
+							<p
+								class="word"
+								id="scrambledWord"
+								aria-label="Scrambled word"
+							></p>
+							<div class="word-meta">
+								<span id="letterCount">0 LETTERS</span
+								><span class="dot-separator">·</span
+								><span id="streakLabel">BUILD YOUR STREAK</span>
+							</div>
+						</div>
+						<div class="hint-row">
+							<span class="hint-icon">?</span>
+							<p id="hintText">A clue will appear here.</p>
+							<button class="text-button" id="hintButton" type="button">
+								Use hint <span id="hintCost">−3</span>
+							</button>
+						</div>
+						<form class="answer-form" id="answerForm">
+							<label for="answerInput">Your answer</label>
+							<div class="answer-row">
+								<input
+									id="answerInput"
+									type="text"
+									spellcheck="false"
+									placeholder="Type the unscrambled word"
+									autocomplete="off"
+									maxlength="20"
+								/><button class="submit-button" type="submit">
+									Check <span>↗</span>
+								</button>
+							</div>
+						</form>
+						<p class="message" id="message" role="status"></p>
+						<div class="card-footer">
+							<button class="secondary-button" id="skipButton" type="button">
+								Skip word <span>→</span></button
+							><span class="shortcut">Press <kbd>Enter</kbd> to submit</span>
+						</div>
+					</section>
+					<aside class="stats-column" id="progress">
+						<div class="stat-card score-card">
+							<p class="eyebrow">CURRENT SCORE</p>
+							<strong id="scoreValue">0</strong>
+							<div class="score-change" id="scoreChange">
+								Ready when you are
+							</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-heading">
+								<p class="eyebrow">SESSION STATS</p>
+								<span class="stat-icon">◎</span>
+							</div>
+							<div class="metric">
+								<span>Solved</span><strong id="solvedValue">0</strong>
+							</div>
+							<div class="metric">
+								<span>Accuracy</span><strong id="accuracyValue">0%</strong>
+							</div>
+							<div class="metric">
+								<span>Best streak</span><strong id="bestStreakValue">0</strong>
+							</div>
+						</div>
+						<div class="stat-card focus-card">
+							<span class="focus-mark">✦</span>
+							<p class="eyebrow">FOCUS METER</p>
+							<strong id="focusValue">0%</strong>
+							<div class="focus-track"><span id="focusBar"></span></div>
+							<p>Answer quickly to charge your focus.</p>
+						</div>
+					</aside>
+				</div>
+				<footer class="workspace-footer">
+					<span>LEXISPRINT · VOCABULARY TRAINING</span
+					><span id="bestScoreLabel">BEST SCORE 0</span>
+				</footer>
+			</section>
+		</main>
 	</body>
 </html>
