@@ -5,7 +5,7 @@
 
 A fun and challenging word game that tests your vocabulary under time pressure! Unscramble letters to reveal hidden words and climb the leaderboard.
 
-![Gameplay Screenshot](https://raw.githubusercontent.com/kunaldasx/word-scramble-game/refs/heads/main/img/gameplay.png)
+![Gameplay Screenshot](https://raw.githubusercontent.com/kunaldasx/word-scramble-game/refs/heads/main/img/demo.png)
 
 ## 🎮 Features
 
