@@ -275,7 +275,7 @@ let words = [
         difficulty: "rare"
     },
     {
-       arakter: "network",
+        arakter: "network",
         hint: "A group or system of interconnected people or things",
         difficulty: "common"
     },

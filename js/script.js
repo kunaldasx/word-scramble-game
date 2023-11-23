@@ -34,7 +34,9 @@ const state = {
 	time: 30,
 	maxTime: 30,
 	word: null,
+	previousWord: null,
 	timer: null,
+	nextRoundTimer: null,
 	hintUsed: false,
 	bestScore: saved?.bestScore || 0,
 	sound: false,
@@ -59,6 +61,16 @@ const shuffle = (value) => {
 	}
 	return letters.join("");
 };
+const scrambleWord = (value) => {
+	let scrambled = value;
+	for (let attempt = 0; attempt < 10 && scrambled === value; attempt += 1) {
+		scrambled = shuffle(value);
+	}
+	if (scrambled === value) {
+		scrambled = `${value.slice(1)}${value[0]}`;
+	}
+	return scrambled;
+};
 const saveProgress = () =>
 	localStorage.setItem(
 		"lexisprint-progress",
@@ -81,6 +93,10 @@ const setMessage = (text, error = false) => {
 	elements.message.classList.toggle("error", error);
 };
 const stopTimer = () => clearInterval(state.timer);
+const scheduleNewRound = (delay) => {
+	clearTimeout(state.nextRoundTimer);
+	state.nextRoundTimer = setTimeout(newRound, delay);
+};
 const startTimer = () => {
 	stopTimer();
 	state.timer = setInterval(() => {
@@ -95,22 +111,28 @@ const startTimer = () => {
 				true,
 			);
 			elements.input.disabled = true;
-			setTimeout(newRound, 1300);
+			scheduleNewRound(1300);
 		}
 	}, 1000);
 };
 const newRound = () => {
 	stopTimer();
+	clearTimeout(state.nextRoundTimer);
 	state.round += 1;
 	state.hintUsed = false;
-	state.word = words[Math.floor(Math.random() * words.length)];
+	const availableWords = words.filter(
+		(word) => word.word !== state.previousWord,
+	);
+	state.word =
+		availableWords[Math.floor(Math.random() * availableWords.length)];
+	state.previousWord = state.word.word;
 	const wordClass = getWordClass(state.word);
 	state.maxTime =
 		state.mode === "blitz"
 			? 15
 			: { common: 30, rare: 28, exclusive: 25, legendary: 22 }[wordClass] || 30;
 	state.time = state.maxTime;
-	elements.word.textContent = shuffle(state.word.word);
+	elements.word.textContent = scrambleWord(state.word.word);
 	elements.difficulty.textContent = wordClass.toUpperCase();
 	elements.letters.textContent = `${state.word.word.length} LETTERS`;
 	elements.round.textContent = String(state.round).padStart(2, "0");
@@ -160,29 +182,31 @@ const checkAnswer = () => {
 		10 +
 			Math.ceil(state.time / 3) +
 			difficultyBonus +
-			(state.streak >= 3 ? 5 : 0) -
-			(state.hintUsed ? 3 : 0),
+			(state.streak >= 3 ? 5 : 0),
 	);
 	state.score += points;
 	state.bestScore = Math.max(state.bestScore, state.score);
 	state.focus = Math.min(100, state.focus + 12);
 	elements.input.classList.add("correct");
+	elements.input.disabled = true;
 	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak`;
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
 	updateStats();
-	setTimeout(newRound, 1100);
+	scheduleNewRound(1100);
 };
 elements.form.addEventListener("submit", (event) => {
 	event.preventDefault();
 	checkAnswer();
 });
 document.getElementById("skipButton").addEventListener("click", () => {
+	state.attempts += 1;
 	state.streak = 0;
 	setMessage(`Skipped. The word was ${state.word.word.toUpperCase()}.`, true);
 	elements.input.disabled = true;
 	stopTimer();
-	setTimeout(newRound, 700);
+	updateStats();
+	scheduleNewRound(700);
 });
 elements.hintButton.addEventListener("click", () => {
 	if (state.hintUsed) return;
