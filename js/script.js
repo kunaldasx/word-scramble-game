@@ -14,6 +14,7 @@ const elements = {
 	streakLabel: document.getElementById("streakLabel"),
 	score: document.getElementById("scoreValue"),
 	scoreChange: document.getElementById("scoreChange"),
+	combo: document.getElementById("comboValue"),
 	solved: document.getElementById("solvedValue"),
 	accuracy: document.getElementById("accuracyValue"),
 	bestStreak: document.getElementById("bestStreakValue"),
@@ -53,6 +54,15 @@ const getWordClass = (wordObj) =>
 			: wordObj.word.length > 4
 				? "rare"
 				: "common");
+const formatMultiplier = (multiplier) =>
+	multiplier
+		.toFixed(2)
+		.replace(/\.0+$/, "")
+		.replace(/(\.\d)0$/, "$1");
+const getComboMultiplier = (streak) => {
+	if (streak <= 1) return 1;
+	return Number(Math.min(3, 1 + (streak - 1) * 0.25).toFixed(2));
+};
 const playableWords = words.filter(
 	(word) => typeof word?.word === "string" && word.word.length > 0,
 );
@@ -93,6 +103,7 @@ const updateStats = () => {
 	elements.focus.textContent = `${state.focus}%`;
 	elements.focusBar.style.width = `${state.focus}%`;
 	elements.bestScore.textContent = `BEST SCORE ${state.bestScore}`;
+	elements.combo.textContent = `x${formatMultiplier(getComboMultiplier(state.streak))}`;
 };
 const setMessage = (text, error = false) => {
 	elements.message.textContent = text;
@@ -156,6 +167,7 @@ const newRound = () => {
 	elements.input.disabled = false;
 	elements.submitButton.disabled = false;
 	elements.skipButton.disabled = false;
+	elements.combo.textContent = `x${formatMultiplier(getComboMultiplier(state.streak))}`;
 	elements.input.maxLength = state.word.word.length;
 	elements.input.className = "";
 	elements.hint.textContent = "A clue will appear here.";
@@ -192,13 +204,15 @@ const checkAnswer = () => {
 	const difficultyBonus = { common: 0, rare: 4, exclusive: 8, legendary: 12 }[
 		getWordClass(state.word)
 	];
-	const points = Math.max(
+	const basePoints = Math.max(
 		5,
 		10 +
 			Math.ceil(state.time / 3) +
 			difficultyBonus +
 			(state.streak >= 3 ? 5 : 0),
 	);
+	const multiplier = getComboMultiplier(state.streak);
+	const points = Math.round(basePoints * multiplier);
 	state.score += points;
 	state.bestScore = Math.max(state.bestScore, state.score);
 	state.focus = Math.min(100, state.focus + 12);
@@ -207,7 +221,7 @@ const checkAnswer = () => {
 	elements.submitButton.disabled = true;
 	elements.skipButton.disabled = true;
 	elements.hintButton.disabled = true;
-	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak`;
+	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak · x${formatMultiplier(multiplier)} combo`;
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
 	updateStats();
