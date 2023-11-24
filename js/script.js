@@ -4,6 +4,8 @@ const elements = {
 	time: document.getElementById("timeValue"),
 	timerBar: document.getElementById("timerBar"),
 	input: document.getElementById("answerInput"),
+	submitButton: document.querySelector(".submit-button"),
+	skipButton: document.getElementById("skipButton"),
 	form: document.getElementById("answerForm"),
 	message: document.getElementById("message"),
 	difficulty: document.getElementById("difficulty"),
@@ -38,6 +40,7 @@ const state = {
 	timer: null,
 	nextRoundTimer: null,
 	hintUsed: false,
+	roundResolved: false,
 	bestScore: saved?.bestScore || 0,
 	sound: false,
 };
@@ -50,6 +53,9 @@ const getWordClass = (wordObj) =>
 			: wordObj.word.length > 4
 				? "rare"
 				: "common");
+const playableWords = words.filter(
+	(word) => typeof word?.word === "string" && word.word.length > 0,
+);
 const shuffle = (value) => {
 	const letters = value.split("");
 	for (let index = letters.length - 1; index > 0; index -= 1) {
@@ -105,12 +111,16 @@ const startTimer = () => {
 		elements.timerBar.style.width = `${(state.time / state.maxTime) * 100}%`;
 		if (state.time <= 0) {
 			stopTimer();
+			state.roundResolved = true;
 			state.attempts += 1;
 			setMessage(
 				`Time's up. The word was ${state.word.word.toUpperCase()}.`,
 				true,
 			);
 			elements.input.disabled = true;
+			elements.submitButton.disabled = true;
+			elements.skipButton.disabled = true;
+			elements.hintButton.disabled = true;
 			scheduleNewRound(1300);
 		}
 	}, 1000);
@@ -120,7 +130,8 @@ const newRound = () => {
 	clearTimeout(state.nextRoundTimer);
 	state.round += 1;
 	state.hintUsed = false;
-	const availableWords = words.filter(
+	state.roundResolved = false;
+	const availableWords = playableWords.filter(
 		(word) => word.word !== state.previousWord,
 	);
 	state.word =
@@ -143,6 +154,8 @@ const newRound = () => {
 	elements.timerBar.style.width = "100%";
 	elements.input.value = "";
 	elements.input.disabled = false;
+	elements.submitButton.disabled = false;
+	elements.skipButton.disabled = false;
 	elements.input.maxLength = state.word.word.length;
 	elements.input.className = "";
 	elements.hint.textContent = "A clue will appear here.";
@@ -153,6 +166,7 @@ const newRound = () => {
 	elements.input.focus();
 };
 const checkAnswer = () => {
+	if (state.roundResolved) return;
 	const answer = elements.input.value.trim().toLowerCase();
 	if (!answer) {
 		setMessage("Type an answer first.", true);
@@ -170,6 +184,7 @@ const checkAnswer = () => {
 		setTimeout(() => elements.input.classList.remove("incorrect"), 500);
 		return;
 	}
+	state.roundResolved = true;
 	stopTimer();
 	state.solved += 1;
 	state.streak += 1;
@@ -189,6 +204,9 @@ const checkAnswer = () => {
 	state.focus = Math.min(100, state.focus + 12);
 	elements.input.classList.add("correct");
 	elements.input.disabled = true;
+	elements.submitButton.disabled = true;
+	elements.skipButton.disabled = true;
+	elements.hintButton.disabled = true;
 	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak`;
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
@@ -200,16 +218,21 @@ elements.form.addEventListener("submit", (event) => {
 	checkAnswer();
 });
 document.getElementById("skipButton").addEventListener("click", () => {
+	if (state.roundResolved) return;
+	state.roundResolved = true;
 	state.attempts += 1;
 	state.streak = 0;
 	setMessage(`Skipped. The word was ${state.word.word.toUpperCase()}.`, true);
 	elements.input.disabled = true;
+	elements.submitButton.disabled = true;
+	elements.skipButton.disabled = true;
+	elements.hintButton.disabled = true;
 	stopTimer();
 	updateStats();
 	scheduleNewRound(700);
 });
 elements.hintButton.addEventListener("click", () => {
-	if (state.hintUsed) return;
+	if (state.hintUsed || state.roundResolved) return;
 	state.hintUsed = true;
 	state.score = Math.max(0, state.score - 3);
 	elements.hint.textContent = state.word.hint;
