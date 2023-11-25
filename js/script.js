@@ -95,6 +95,11 @@ const saveProgress = () =>
 			bestStreak: state.bestStreak,
 		}),
 	);
+const pulseCombo = () => {
+	elements.combo.classList.remove("combo-pop");
+	void elements.combo.offsetWidth;
+	elements.combo.classList.add("combo-pop");
+};
 const updateStats = () => {
 	elements.score.textContent = state.score;
 	elements.solved.textContent = state.solved;
@@ -104,6 +109,7 @@ const updateStats = () => {
 	elements.focusBar.style.width = `${state.focus}%`;
 	elements.bestScore.textContent = `BEST SCORE ${state.bestScore}`;
 	elements.combo.textContent = `x${formatMultiplier(getComboMultiplier(state.streak))}`;
+	if (state.streak >= 2) pulseCombo();
 };
 const setMessage = (text, error = false) => {
 	elements.message.textContent = text;
@@ -168,6 +174,7 @@ const newRound = () => {
 	elements.submitButton.disabled = false;
 	elements.skipButton.disabled = false;
 	elements.combo.textContent = `x${formatMultiplier(getComboMultiplier(state.streak))}`;
+	elements.combo.classList.remove("combo-pop");
 	elements.input.maxLength = state.word.word.length;
 	elements.input.className = "";
 	elements.hint.textContent = "A clue will appear here.";
@@ -211,8 +218,10 @@ const checkAnswer = () => {
 			difficultyBonus +
 			(state.streak >= 3 ? 5 : 0),
 	);
+	const perfectBonus =
+		!state.hintUsed && state.time >= Math.ceil(state.maxTime * 0.6) ? 8 : 0;
 	const multiplier = getComboMultiplier(state.streak);
-	const points = Math.round(basePoints * multiplier);
+	const points = Math.round((basePoints + perfectBonus) * multiplier);
 	state.score += points;
 	state.bestScore = Math.max(state.bestScore, state.score);
 	state.focus = Math.min(100, state.focus + 12);
@@ -221,7 +230,8 @@ const checkAnswer = () => {
 	elements.submitButton.disabled = true;
 	elements.skipButton.disabled = true;
 	elements.hintButton.disabled = true;
-	elements.scoreChange.textContent = `+${points} points · ${state.streak} streak · x${formatMultiplier(multiplier)} combo`;
+	elements.scoreChange.textContent = `${perfectBonus ? `Perfect! ` : ""}+${points} points · ${state.streak} streak · x${formatMultiplier(multiplier)} combo`;
+	pulseCombo();
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
 	updateStats();

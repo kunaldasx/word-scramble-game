@@ -518,6 +518,13 @@ kbd {
 		700 10px "DM Mono",
 		sans-serif;
 	letter-spacing: 0.12em;
+	transition:
+		transform 0.2s ease,
+		filter 0.2s ease;
+}
+.combo-pop {
+	transform: scale(1.12);
+	filter: drop-shadow(0 0 10px rgba(255, 242, 160, 0.7));
 }
 .stat-heading {
 	display: flex;
