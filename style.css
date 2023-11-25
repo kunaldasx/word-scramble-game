@@ -223,7 +223,7 @@ button {
 	background: #eceee7;
 }
 .mode-button {
-	min-width: 150px;
+	min-width: 120px;
 	padding: 9px 15px;
 	color: var(--muted);
 	border: 0;
@@ -543,6 +543,35 @@ kbd {
 }
 .metric strong {
 	color: var(--ink);
+}
+.leaderboard-card {
+	padding-bottom: 12px;
+}
+.leaderboard-list {
+	margin: 14px 0 0;
+	padding-left: 18px;
+	color: var(--ink);
+	font-size: 11px;
+}
+.leaderboard-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 5px 0;
+	border-bottom: 1px dashed var(--line);
+}
+.leaderboard-list li:last-child {
+	border-bottom: 0;
+}
+.leaderboard-list span {
+	color: var(--muted);
+}
+.leaderboard-list strong {
+	flex: 1;
+	text-align: right;
+}
+.leaderboard-list small {
+	color: var(--muted);
 }
 .focus-card {
 	position: relative;

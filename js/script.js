@@ -23,8 +23,12 @@ const elements = {
 	bestScore: document.getElementById("bestScoreLabel"),
 	hintButton: document.getElementById("hintButton"),
 	hintCost: document.getElementById("hintCost"),
+	leaderboardList: document.getElementById("leaderboardList"),
 };
 const saved = JSON.parse(localStorage.getItem("lexisprint-progress") || "null");
+const leaderboard = JSON.parse(
+	localStorage.getItem("lexisprint-leaderboard") || "[]",
+);
 const state = {
 	score: 0,
 	streak: 0,
@@ -43,6 +47,9 @@ const state = {
 	hintUsed: false,
 	roundResolved: false,
 	bestScore: saved?.bestScore || 0,
+	bestCombo: saved?.bestCombo || 1,
+	comboMilestone2: false,
+	comboMilestone3: false,
 	sound: false,
 };
 const getWordClass = (wordObj) =>
@@ -87,14 +94,47 @@ const scrambleWord = (value) => {
 	}
 	return scrambled;
 };
-const saveProgress = () =>
+const saveProgress = () => {
 	localStorage.setItem(
 		"lexisprint-progress",
 		JSON.stringify({
 			bestScore: state.bestScore,
 			bestStreak: state.bestStreak,
+			bestCombo: state.bestCombo,
 		}),
 	);
+	localStorage.setItem(
+		"lexisprint-leaderboard",
+		JSON.stringify(
+			leaderboard
+				.slice()
+				.sort((a, b) => b.score - a.score || b.bestCombo - a.bestCombo)
+				.slice(0, 5),
+		),
+	);
+};
+const renderLeaderboard = () => {
+	const entries = JSON.parse(
+		localStorage.getItem("lexisprint-leaderboard") || "[]",
+	);
+	if (!entries.length) {
+		elements.leaderboardList.innerHTML =
+			"<li><span>None yet</span><strong>0</strong></li>";
+		return;
+	}
+	elements.leaderboardList.innerHTML = entries
+		.slice(0, 5)
+		.map(
+			(entry, index) => `
+				<li>
+					<span>#${index + 1}</span>
+					<strong>${entry.score}</strong>
+					<small>x${entry.bestCombo}</small>
+				</li>
+			`,
+		)
+		.join("");
+};
 const pulseCombo = () => {
 	elements.combo.classList.remove("combo-pop");
 	void elements.combo.offsetWidth;
@@ -108,7 +148,8 @@ const updateStats = () => {
 	elements.focus.textContent = `${state.focus}%`;
 	elements.focusBar.style.width = `${state.focus}%`;
 	elements.bestScore.textContent = `BEST SCORE ${state.bestScore}`;
-	elements.combo.textContent = `x${formatMultiplier(getComboMultiplier(state.streak))}`;
+	const currentCombo = getComboMultiplier(state.streak);
+	elements.combo.textContent = `x${formatMultiplier(currentCombo)}`;
 	if (state.streak >= 2) pulseCombo();
 };
 const setMessage = (text, error = false) => {
@@ -142,6 +183,11 @@ const startTimer = () => {
 		}
 	}, 1000);
 };
+const getModeSettings = (mode) => {
+	if (mode === "blitz") return { timer: 15, bonus: 1.15 };
+	if (mode === "hard") return { timer: 18, bonus: 1.35 };
+	return { timer: 30, bonus: 1 };
+};
 const newRound = () => {
 	stopTimer();
 	clearTimeout(state.nextRoundTimer);
@@ -155,10 +201,15 @@ const newRound = () => {
 		availableWords[Math.floor(Math.random() * availableWords.length)];
 	state.previousWord = state.word.word;
 	const wordClass = getWordClass(state.word);
+	const modeSettings = getModeSettings(state.mode);
 	state.maxTime =
 		state.mode === "blitz"
 			? 15
-			: { common: 30, rare: 28, exclusive: 25, legendary: 22 }[wordClass] || 30;
+			: state.mode === "hard"
+				? { common: 18, rare: 16, exclusive: 14, legendary: 12 }[wordClass] ||
+					18
+				: { common: 30, rare: 28, exclusive: 25, legendary: 22 }[wordClass] ||
+					30;
 	state.time = state.maxTime;
 	elements.word.textContent = scrambleWord(state.word.word);
 	elements.difficulty.textContent = wordClass.toUpperCase();
@@ -196,6 +247,8 @@ const checkAnswer = () => {
 	state.attempts += 1;
 	if (answer !== state.word.word.toLowerCase()) {
 		state.streak = 0;
+		state.comboMilestone2 = false;
+		state.comboMilestone3 = false;
 		state.focus = Math.max(0, state.focus - 8);
 		elements.input.classList.add("incorrect");
 		setMessage("Not quite. Keep looking at the clue.", true);
@@ -208,6 +261,15 @@ const checkAnswer = () => {
 	state.solved += 1;
 	state.streak += 1;
 	state.bestStreak = Math.max(state.bestStreak, state.streak);
+	state.bestCombo = Math.max(state.bestCombo, getComboMultiplier(state.streak));
+	if (state.streak >= 2 && !state.comboMilestone2) {
+		state.comboMilestone2 = true;
+		setMessage("Combo x2 unlocked! Keep the chain alive.", false);
+	}
+	if (state.streak >= 3 && !state.comboMilestone3) {
+		state.comboMilestone3 = true;
+		setMessage("Combo x3 unlocked! You are on fire.", false);
+	}
 	const difficultyBonus = { common: 0, rare: 4, exclusive: 8, legendary: 12 }[
 		getWordClass(state.word)
 	];
@@ -220,8 +282,11 @@ const checkAnswer = () => {
 	);
 	const perfectBonus =
 		!state.hintUsed && state.time >= Math.ceil(state.maxTime * 0.6) ? 8 : 0;
+	const modeBonus = getModeSettings(state.mode).bonus;
 	const multiplier = getComboMultiplier(state.streak);
-	const points = Math.round((basePoints + perfectBonus) * multiplier);
+	const points = Math.round(
+		(basePoints + perfectBonus) * multiplier * modeBonus,
+	);
 	state.score += points;
 	state.bestScore = Math.max(state.bestScore, state.score);
 	state.focus = Math.min(100, state.focus + 12);
@@ -234,6 +299,7 @@ const checkAnswer = () => {
 	pulseCombo();
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
+	renderLeaderboard();
 	updateStats();
 	scheduleNewRound(1100);
 };
@@ -246,6 +312,8 @@ document.getElementById("skipButton").addEventListener("click", () => {
 	state.roundResolved = true;
 	state.attempts += 1;
 	state.streak = 0;
+	state.comboMilestone2 = false;
+	state.comboMilestone3 = false;
 	setMessage(`Skipped. The word was ${state.word.word.toUpperCase()}.`, true);
 	elements.input.disabled = true;
 	elements.submitButton.disabled = true;
@@ -281,5 +349,7 @@ document.getElementById("soundToggle").addEventListener("click", (event) => {
 	state.sound = !state.sound;
 	event.currentTarget.textContent = state.sound ? "♫" : "⌁";
 });
+saveLeaderboardEntry();
+renderLeaderboard();
 updateStats();
 newRound();
