@@ -103,15 +103,6 @@ const saveProgress = () => {
 			bestCombo: state.bestCombo,
 		}),
 	);
-	localStorage.setItem(
-		"lexisprint-leaderboard",
-		JSON.stringify(
-			leaderboard
-				.slice()
-				.sort((a, b) => b.score - a.score || b.bestCombo - a.bestCombo)
-				.slice(0, 5),
-		),
-	);
 };
 const renderLeaderboard = () => {
 	const entries = JSON.parse(
@@ -134,6 +125,23 @@ const renderLeaderboard = () => {
 			`,
 		)
 		.join("");
+};
+const saveLeaderboardEntry = () => {
+	const entries = JSON.parse(
+		localStorage.getItem("lexisprint-leaderboard") || "[]",
+	);
+	entries.push({
+		score: state.score,
+		bestStreak: state.bestStreak,
+		bestCombo: state.bestCombo,
+		label: new Date().toLocaleDateString(),
+	});
+	entries.sort((a, b) => b.score - a.score || b.bestCombo - a.bestCombo);
+	localStorage.setItem(
+		"lexisprint-leaderboard",
+		JSON.stringify(entries.slice(0, 5)),
+	);
+	renderLeaderboard();
 };
 const pulseCombo = () => {
 	elements.combo.classList.remove("combo-pop");
@@ -299,7 +307,7 @@ const checkAnswer = () => {
 	pulseCombo();
 	setMessage(`${state.word.word.toUpperCase()} solved. Nice work.`);
 	saveProgress();
-	renderLeaderboard();
+	saveLeaderboardEntry();
 	updateStats();
 	scheduleNewRound(1100);
 };
@@ -349,7 +357,6 @@ document.getElementById("soundToggle").addEventListener("click", (event) => {
 	state.sound = !state.sound;
 	event.currentTarget.textContent = state.sound ? "♫" : "⌁";
 });
-saveLeaderboardEntry();
 renderLeaderboard();
 updateStats();
 newRound();
